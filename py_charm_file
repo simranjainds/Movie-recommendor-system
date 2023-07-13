@@ -1,0 +1,131 @@
+import streamlit as st
+import pandas as pd
+import pickle
+import requests
+
+# Set page configuration
+st.set_page_config(
+    page_title="Movie Recommendor System",
+    page_icon="🎥",
+    layout="wide"
+)
+
+# Add CSS styles
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #f5f5f5;
+        font-family: 'Arial', sans-serif;
+    }
+    .container {
+        max-width: 900px;
+        padding: 2rem;
+    }
+    .title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .poster {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin-top: 2rem;
+    }
+    .poster-item {
+        flex: 0 0 19%;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    .poster-item img {
+        max-width: 100%;
+        border-radius: 0.5rem;
+    }
+    .poster-item span {
+        display: block;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+        font-weight: bold;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Add custom background image
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-image: url('backdrop.jpeg');
+        background-size: cover;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Rest of your code...
+def fetch_poster(movie_id):
+    response = requests.get("https://api.themoviedb.org/3/movie/{}?api_key=aa2045b84ae7fb442b368ec307a1854e&language=en-US".format(movie_id))
+    data = response.json()
+    return "https://image.tmdb.org/t/p/w500/"+data['poster_path']
+
+
+similarity =pickle.load(open('similarity.pkl','rb'))
+movies_dict = pickle.load(open('movies_dict.pkl','rb'))
+movies = pd.DataFrame(movies_dict)
+st.title('Movie Recommendor System')
+
+def recommend(movie):
+    movie_index = movies[movies['title'] == movie].index[0]
+    distances = similarity[movie_index]
+
+
+    movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
+    recommended_movies = []
+    recommended_movies_poster = []
+
+    for i in movie_list:
+        movie_id = movies.iloc[i[0]].movie_id
+        #we want to fetch poster from API
+
+
+
+        recommended_movies.append(movies.iloc[i[0]].title)
+        recommended_movies_poster.append(fetch_poster(movie_id))
+    return recommended_movies , recommended_movies_poster
+
+option = st.selectbox(
+    'How would you like to be contacted?',
+    movies['title'].values)
+
+# Paste your existing code here...
+
+# ...
+
+if st.button('Show Recommendation'):
+    recommended_movie_names, recommended_movie_posters = recommend(option)
+
+    st.markdown("<h2>Recommended Movies</h2>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="poster">
+        """,
+        unsafe_allow_html=True
+    )
+
+    for name, poster in zip(recommended_movie_names, recommended_movie_posters):
+        st.markdown(
+            """
+            <div class="poster-item">
+                <img src="{}" alt="Movie Poster">
+                <span>{}</span>
+            </div>
+            """.format(poster, name),
+            unsafe_allow_html=True
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
